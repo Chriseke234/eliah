@@ -1,7 +1,7 @@
 import { updateSession } from '@/lib/supabase/middleware'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { supabase, supabaseResponse, user } = await updateSession(request)
   const pathname = request.nextUrl.pathname
 
@@ -16,12 +16,13 @@ export async function middleware(request: NextRequest) {
     }
 
     // Fetch the user's role from public.users
-    const { data: profile } = await supabase
+    const { data: profileData } = await supabase
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single()
 
+    const profile = profileData as { role: 'ADMIN' | 'CLIENT' } | null
     const role = profile?.role
 
     // If user lands on /app (root), redirect to their dashboard
@@ -47,12 +48,13 @@ export async function middleware(request: NextRequest) {
   // Redirect already-authenticated users away from /login and /signup
   // -------------------------------------------------------------------------
   if ((pathname === '/login' || pathname === '/signup') && user) {
-    const { data: profile } = await supabase
+    const { data: profileData } = await supabase
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single()
 
+    const profile = profileData as { role: 'ADMIN' | 'CLIENT' } | null
     const role = profile?.role
     const dest = role === 'ADMIN' ? '/app/admin' : '/app/client'
     return NextResponse.redirect(new URL(dest, request.url))
