@@ -45,13 +45,17 @@ export default async function AppLayout({
     }
   }
 
-  const { data: orgData } = await supabase
-    .from('organizations')
-    .select('id, name')
-    .eq('id', profile?.org_id ?? '')
-    .maybeSingle()
+  let org: Pick<OrgRow, 'id' | 'name'> | null = null
 
-  const org = orgData as Pick<OrgRow, 'id' | 'name'> | null
+  if (profile?.org_id) {
+    const { data: orgData } = await supabase
+      .from('organizations')
+      .select('id, name')
+      .eq('id', profile.org_id)
+      .maybeSingle()
+
+    org = orgData as Pick<OrgRow, 'id' | 'name'> | null
+  }
 
   return (
     <div className="flex h-screen bg-slate-950 overflow-hidden">

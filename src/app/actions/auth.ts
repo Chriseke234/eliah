@@ -23,14 +23,15 @@ export async function signUpWithOrg({
   fullName,
   email,
   password,
-}: SignUpParams): Promise<{ error?: string }> {
+}: SignUpParams): Promise<{ error?: string; requiresConfirmation?: boolean; success?: boolean }> {
   const adminSupabase = await createAdminClient()
 
   // 1. Create the organization row
-  const slug = orgName
+  const baseSlug = orgName
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
+    .replace(/(^-|-$)/g, '') || 'agency'
+  const slug = `${baseSlug}-${Math.random().toString(36).substring(2, 7)}`
 
   const { data: orgData, error: orgError } = await (adminSupabase
     .from('organizations') as any)
@@ -47,7 +48,7 @@ export async function signUpWithOrg({
 
   // 2. Sign up the user with metadata that the DB trigger will use
   const supabase = await createClient()
-  const { error: authError } = await supabase.auth.signUp({
+  const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -61,12 +62,39 @@ export async function signUpWithOrg({
 
   if (authError) {
     // Roll back org creation if user signup fails
-    await adminSupabase.from('organizations').delete().eq('id', org!.id)
+    await adminSupabase.from('organizations').delete().eq('id', org.id)
     console.error('[signUpWithOrg] auth signup error:', authError)
     return { error: authError.message }
   }
 
-  return {}
+  // 3. Ensure public.users row exists (in case trigger is missing or delayed)
+  if (authData.user) {
+    const { data: existingUser } = await adminSupabase
+      .from('users')
+      .select('id')
+      .eq('id', authData.user.id)
+      .maybeSingle()
+
+    if (!existingUser) {
+      const { error: userInsertError } = await (adminSupabase.from('users') as any).insert({
+        id: authData.user.id,
+        org_id: org.id,
+        role: 'ADMIN',
+        full_name: fullName,
+        email: authData.user.email ?? email,
+      })
+      if (userInsertError) {
+        console.error('[signUpWithOrg] public.users fallback insert error:', userInsertError)
+      }
+    }
+  }
+
+  // If Supabase project requires email confirmation, session will be null
+  if (!authData.session) {
+    return { requiresConfirmation: true }
+  }
+
+  return { success: true }
 }
 
 /**

@@ -13,6 +13,7 @@ export function SignupForm() {
     email: '',
     password: '',
   })
+  const [requiresConfirmation, setRequiresConfirmation] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -42,9 +43,36 @@ export function SignupForm() {
         return
       }
 
+      if (result?.requiresConfirmation) {
+        setRequiresConfirmation(true)
+        return
+      }
+
       router.push('/app/admin')
       router.refresh()
     })
+  }
+
+  if (requiresConfirmation) {
+    return (
+      <div className="space-y-4 text-center py-4">
+        <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold text-white">Check your email</h3>
+        <p className="text-sm text-slate-400 max-w-sm mx-auto">
+          We sent a confirmation email to <strong className="text-slate-200">{form.email}</strong>. Please click the link inside to activate your account.
+        </p>
+        <button
+          onClick={() => router.push('/login')}
+          className="w-full mt-4 px-4 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors"
+        >
+          Go to Sign In
+        </button>
+      </div>
+    )
   }
 
   const fields: Array<{
