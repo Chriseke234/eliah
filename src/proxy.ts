@@ -3,6 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
   const { supabase, supabaseResponse, user } = await updateSession(request)
+  if (!supabase) return supabaseResponse
+
   const pathname = request.nextUrl.pathname
 
   // -------------------------------------------------------------------------
