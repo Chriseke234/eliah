@@ -35,7 +35,7 @@ export function Sidebar({ profile, orgName }: SidebarProps) {
   const [isPending, startTransition] = useTransition()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
 
-  const navItems = profile.role === 'ADMIN' ? adminNav : clientNav
+  const navItems = profile?.role === 'ADMIN' ? adminNav : clientNav
 
   const handleSignOut = () => {
     startTransition(async () => {
@@ -46,9 +46,9 @@ export function Sidebar({ profile, orgName }: SidebarProps) {
     })
   }
 
-  const initials = profile.full_name
+  const initials = profile?.full_name
     ? profile.full_name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
-    : profile.email.slice(0, 2).toUpperCase()
+    : (profile?.email ?? 'US').slice(0, 2).toUpperCase()
 
   return (
     <aside className="hidden lg:flex flex-col w-64 border-r border-slate-800/60 bg-slate-950 shrink-0">
@@ -61,7 +61,7 @@ export function Sidebar({ profile, orgName }: SidebarProps) {
         </div>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-white truncate">{orgName}</p>
-          <p className="text-xs text-slate-400 truncate capitalize">{profile.role.toLowerCase()} portal</p>
+          <p className="text-xs text-slate-400 truncate capitalize">{(profile?.role ?? 'CLIENT').toLowerCase()} portal</p>
         </div>
       </div>
 

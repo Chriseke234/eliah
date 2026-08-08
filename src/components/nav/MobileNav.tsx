@@ -35,11 +35,11 @@ export function MobileNav({ profile, orgName }: MobileNavProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  const navItems = profile.role === 'ADMIN' ? adminNav : clientNav
+  const navItems = profile?.role === 'ADMIN' ? adminNav : clientNav
 
-  const initials = profile.full_name
+  const initials = profile?.full_name
     ? profile.full_name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
-    : profile.email.slice(0, 2).toUpperCase()
+    : (profile?.email ?? 'US').slice(0, 2).toUpperCase()
 
   const handleSignOut = () => {
     startTransition(async () => {
