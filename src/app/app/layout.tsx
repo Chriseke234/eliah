@@ -23,19 +23,34 @@ export default async function AppLayout({
     .from('users')
     .select('id, org_id, role, full_name, email, avatar_url')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
-  const profile = profileData as UserRow | null
+  let profile = profileData as UserRow | null
 
   if (!profile) {
-    redirect('/login')
+    // Fallback using auth user_metadata if public.users row is not synced yet
+    const meta = user.user_metadata ?? {}
+    if (meta.org_id && meta.role) {
+      profile = {
+        id: user.id,
+        org_id: meta.org_id,
+        role: meta.role,
+        full_name: meta.full_name ?? user.email?.split('@')[0] ?? 'User',
+        email: user.email ?? '',
+        avatar_url: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+    } else {
+      redirect('/login')
+    }
   }
 
   const { data: orgData } = await supabase
     .from('organizations')
     .select('id, name')
     .eq('id', profile.org_id)
-    .single()
+    .maybeSingle()
 
   const org = orgData as Pick<OrgRow, 'id' | 'name'> | null
 

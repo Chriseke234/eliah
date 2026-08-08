@@ -23,16 +23,17 @@ export default async function ClientsPage() {
     .from('users')
     .select('org_id, role')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
-  const profile = profileData as Pick<UserRow, 'org_id' | 'role'> | null
+  const orgId = profileData?.org_id ?? user.user_metadata?.org_id
+  const role = profileData?.role ?? user.user_metadata?.role
 
-  if (!profile || profile.role !== 'ADMIN') redirect('/app/client')
+  if (!orgId || role !== 'ADMIN') redirect('/app/client')
 
   const { data: clients, error } = await supabase
     .from('users')
     .select('*')
-    .eq('org_id', profile.org_id)
+    .eq('org_id', orgId)
     .eq('role', 'CLIENT')
     .order('created_at', { ascending: false })
 

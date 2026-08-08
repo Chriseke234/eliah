@@ -23,11 +23,12 @@ export default async function AdminWorkspacePage() {
     .from('users')
     .select('org_id, role')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
-  const profile = profileData as Pick<UserRow, 'org_id' | 'role'> | null
+  const orgId = profileData?.org_id ?? user.user_metadata?.org_id
+  const role = profileData?.role ?? user.user_metadata?.role
 
-  if (!profile || profile.role !== 'ADMIN') redirect('/app/client')
+  if (!orgId || role !== 'ADMIN') redirect('/app/client')
 
   // Fetch all requests in org, including client info
   const { data: requests, error } = await supabase
@@ -41,7 +42,7 @@ export default async function AdminWorkspacePage() {
         avatar_url
       )
     `)
-    .eq('org_id', profile.org_id)
+    .eq('org_id', orgId)
     .order('created_at', { ascending: false })
 
   if (error) {
