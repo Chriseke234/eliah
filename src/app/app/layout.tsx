@@ -39,7 +39,6 @@ export default async function AppLayout({
         email: user.email ?? '',
         avatar_url: null,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       }
     } else {
       redirect('/login')
@@ -49,7 +48,7 @@ export default async function AppLayout({
   const { data: orgData } = await supabase
     .from('organizations')
     .select('id, name')
-    .eq('id', profile.org_id)
+    .eq('id', profile?.org_id ?? '')
     .maybeSingle()
 
   const org = orgData as Pick<OrgRow, 'id' | 'name'> | null
