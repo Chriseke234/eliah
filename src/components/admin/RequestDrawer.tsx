@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect } from 'react'
 import { updateRequest } from '@/app/actions/requests'
 import { getSignedUrl } from '@/app/actions/attachments'
 import { createClient } from '@/lib/supabase/client'
-import { type RequestWithClient, type RequestStatus, type AttachmentRow } from '@/lib/database.types'
+import { type RequestWithClient, type RequestStatus, type AttachmentRow, type RequestActivityRow } from '@/lib/database.types'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { formatDate, formatFileSize } from '@/lib/utils'
 import {
@@ -21,7 +21,8 @@ import {
   Calendar,
   User,
   Flag,
-  Trash2,
+  History,
+  Activity,
 } from 'lucide-react'
 
 interface RequestDrawerProps {
@@ -50,7 +51,9 @@ export function RequestDrawer({ request, open, onClose, onUpdate }: RequestDrawe
   const [status, setStatus] = useState<RequestStatus>('TODO')
   const [paymentLink, setPaymentLink] = useState('')
   const [attachments, setAttachments] = useState<AttachmentRow[]>([])
+  const [activities, setActivities] = useState<RequestActivityRow[]>([])
   const [loadingAttachments, setLoadingAttachments] = useState(false)
+  const [loadingActivities, setLoadingActivities] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -63,6 +66,7 @@ export function RequestDrawer({ request, open, onClose, onUpdate }: RequestDrawe
       setSaveSuccess(false)
       setSaveError(null)
       fetchAttachments(request.id)
+      fetchActivities(request.id)
     }
   }, [request?.id])
 
@@ -76,6 +80,18 @@ export function RequestDrawer({ request, open, onClose, onUpdate }: RequestDrawe
       .order('created_at', { ascending: true })
     setAttachments((data as AttachmentRow[]) ?? [])
     setLoadingAttachments(false)
+  }
+
+  const fetchActivities = async (requestId: string) => {
+    setLoadingActivities(true)
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('request_activity')
+      .select('*')
+      .eq('request_id', requestId)
+      .order('created_at', { ascending: false })
+    setActivities((data as RequestActivityRow[]) ?? [])
+    setLoadingActivities(false)
   }
 
   const handleSave = () => {
@@ -95,6 +111,7 @@ export function RequestDrawer({ request, open, onClose, onUpdate }: RequestDrawe
 
       onUpdate({ id: request.id, status, payment_link: paymentLink.trim() || null })
       setSaveSuccess(true)
+      fetchActivities(request.id)
       setTimeout(() => setSaveSuccess(false), 2000)
     })
   }
@@ -129,7 +146,7 @@ export function RequestDrawer({ request, open, onClose, onUpdate }: RequestDrawe
 
       {/* Drawer panel */}
       <aside
-        className="fixed inset-y-0 right-0 z-50 w-full sm:w-[480px] bg-slate-900 border-l border-slate-800/60 flex flex-col shadow-2xl transform transition-transform duration-300"
+        className="fixed inset-y-0 right-0 z-50 w-full sm:w-[500px] bg-slate-900 border-l border-slate-800/60 flex flex-col shadow-2xl transform transition-transform duration-300"
         role="dialog"
         aria-modal="true"
         aria-labelledby="drawer-title"
@@ -222,7 +239,7 @@ export function RequestDrawer({ request, open, onClose, onUpdate }: RequestDrawe
             {/* Payment link */}
             <div className="space-y-2">
               <label htmlFor="payment-link" className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Payment Link
+                External Payment Link
               </label>
               <div className="relative">
                 <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
@@ -243,7 +260,7 @@ export function RequestDrawer({ request, open, onClose, onUpdate }: RequestDrawe
                   className="inline-flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  View current payment link
+                  View external payment page
                 </a>
               )}
             </div>
@@ -295,6 +312,36 @@ export function RequestDrawer({ request, open, onClose, onUpdate }: RequestDrawe
                       >
                         <Download className="w-4 h-4" />
                       </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Activity Feed */}
+            <div className="space-y-3 pt-2">
+              <label className="text-xs font-medium text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <History className="w-3.5 h-3.5 text-violet-400" /> Activity History ({activities.length})
+              </label>
+
+              {loadingActivities ? (
+                <div className="flex items-center gap-2 text-slate-500 text-sm py-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Loading activities…
+                </div>
+              ) : activities.length === 0 ? (
+                <p className="text-xs text-slate-600 py-1">No recorded activities yet</p>
+              ) : (
+                <div className="space-y-3 relative pl-3 border-l border-slate-800">
+                  {activities.map((act) => (
+                    <div key={act.id} className="relative text-xs">
+                      <div className="absolute -left-[17px] top-1 w-2 h-2 rounded-full bg-violet-400 ring-4 ring-slate-900" />
+                      <div className="flex items-center justify-between text-slate-400">
+                        <span className="font-semibold text-slate-300">{act.action_type.replace('_', ' ')}</span>
+                        <span className="text-[11px] text-slate-500">{formatDate(act.created_at)}</span>
+                      </div>
+                      {act.details && (
+                        <p className="text-slate-400 mt-0.5">{act.details}</p>
+                      )}
                     </div>
                   ))}
                 </div>

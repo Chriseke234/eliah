@@ -1,10 +1,9 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentProfile, getClientRequests } from '@/lib/queries'
 import { RequestList } from '@/components/client/RequestList'
 import { NewRequestButton } from '@/components/client/NewRequestButton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FileText } from 'lucide-react'
-import { type RequestRow } from '@/lib/database.types'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -12,25 +11,11 @@ export const metadata: Metadata = {
 }
 
 export default async function ClientDashboardPage() {
-  const supabase = await createClient()
+  const profile = await getCurrentProfile()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  if (!profile) redirect('/login')
 
-  if (!user) redirect('/login')
-
-  const { data: requests, error } = await supabase
-    .from('requests')
-    .select('*')
-    .eq('client_id', user.id)
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('[ClientDashboard]', error)
-  }
-
-  const typedRequests = (requests ?? []) as RequestRow[]
+  const typedRequests = await getClientRequests(profile.id)
 
   const stats = {
     total: typedRequests.length,
@@ -50,7 +35,7 @@ export default async function ClientDashboardPage() {
               Track and manage your project requests
             </p>
           </div>
-          <NewRequestButton userId={user.id} />
+          <NewRequestButton userId={profile.id} />
         </div>
 
         {/* Stats row */}
@@ -79,7 +64,7 @@ export default async function ClientDashboardPage() {
             icon={FileText}
             title="No requests yet"
             description="Submit your first request and our team will get started right away."
-            action={<NewRequestButton userId={user.id} />}
+            action={<NewRequestButton userId={profile.id} />}
           />
         ) : (
           <RequestList requests={typedRequests} />

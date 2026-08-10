@@ -2,10 +2,9 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { type AttachmentRow } from '@/lib/database.types'
 
 /**
- * Inserts an attachment row after the file has been uploaded to Storage.
+ * Inserts an attachment row after the file has been uploaded to Storage, and logs activity.
  */
 export async function createAttachment(params: {
   requestId: string
@@ -21,8 +20,17 @@ export async function createAttachment(params: {
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const { data: attachmentData, error } = await (supabase
-    .from('attachments') as any)
+  // Fetch request for org_id
+  const { data: req } = await supabase
+    .from('requests')
+    .select('org_id')
+    .eq('id', params.requestId)
+    .single()
+
+  if (!req) return { error: 'Associated request not found' }
+
+  const { data: attachment, error } = await supabase
+    .from('attachments')
     .insert({
       request_id: params.requestId,
       file_path: params.filePath,
@@ -34,17 +42,24 @@ export async function createAttachment(params: {
     .select('id')
     .single()
 
-  const data = attachmentData as Pick<AttachmentRow, 'id'> | null
-
-  if (error || !data) {
+  if (error || !attachment) {
     console.error('[createAttachment]', error)
     return { error: error?.message ?? 'Failed to save attachment record' }
   }
 
+  // Log activity
+  await supabase.from('request_activity').insert({
+    request_id: params.requestId,
+    org_id: req.org_id,
+    actor_id: user.id,
+    action_type: 'ATTACHMENT_ADDED',
+    details: `File "${params.fileName}" uploaded.`,
+  })
+
   revalidatePath('/app/admin')
   revalidatePath('/app/client')
 
-  return { id: data.id }
+  return { id: attachment.id }
 }
 
 /**
@@ -76,7 +91,6 @@ export async function deleteAttachment(id: string, filePath: string): Promise<{ 
 
   if (storageError) {
     console.error('[deleteAttachment] storage:', storageError)
-    // Continue even if storage delete fails — remove DB row
   }
 
   const { error: dbError } = await supabase.from('attachments').delete().eq('id', id)
@@ -86,6 +100,7 @@ export async function deleteAttachment(id: string, filePath: string): Promise<{ 
   }
 
   revalidatePath('/app/admin')
+  revalidatePath('/app/client')
   return {}
 }
 
@@ -100,8 +115,8 @@ export async function markNotificationsRead(): Promise<{ error?: string }> {
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const { error } = await (supabase
-    .from('notifications') as any)
+  const { error } = await supabase
+    .from('notifications')
     .update({ read: true })
     .eq('user_id', user.id)
     .eq('read', false)

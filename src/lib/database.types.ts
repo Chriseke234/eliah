@@ -1,6 +1,5 @@
 // =============================================================================
 // Database Types — generated from Supabase schema
-// Re-generate with: npx supabase gen types typescript --project-id <your-id> > src/lib/database.types.ts
 // =============================================================================
 
 export type Json =
@@ -15,6 +14,7 @@ export type UserRole = 'ADMIN' | 'CLIENT'
 export type RequestStatus = 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'COMPLETED'
 export type NotificationType = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR'
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH'
+export type ActivityActionType = 'CREATED' | 'STATUS_UPDATED' | 'PAYMENT_LINK_ADDED' | 'ATTACHMENT_ADDED' | 'PRIORITY_UPDATED'
 
 export interface Database {
   public: {
@@ -24,18 +24,30 @@ export interface Database {
           id: string
           name: string
           slug: string | null
+          logo_url: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          favicon_url: string | null
           created_at: string
         }
         Insert: {
           id?: string
           name: string
           slug?: string | null
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          favicon_url?: string | null
           created_at?: string
         }
         Update: {
           id?: string
           name?: string
           slug?: string | null
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          favicon_url?: string | null
           created_at?: string
         }
         Relationships: []
@@ -183,6 +195,58 @@ export interface Database {
           }
         ]
       }
+      request_activity: {
+        Row: {
+          id: string
+          request_id: string
+          org_id: string
+          actor_id: string | null
+          action_type: ActivityActionType
+          details: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          org_id: string
+          actor_id?: string | null
+          action_type: ActivityActionType
+          details?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          org_id?: string
+          actor_id?: string | null
+          action_type?: ActivityActionType
+          details?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_activity_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_activity_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_activity_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       notifications: {
         Row: {
           id: string
@@ -266,9 +330,12 @@ export interface Database {
 
 // Convenience type aliases
 export type OrgRow = Database['public']['Tables']['organizations']['Row']
+export type OrgUpdate = Database['public']['Tables']['organizations']['Update']
 export type UserRow = Database['public']['Tables']['users']['Row']
 export type RequestRow = Database['public']['Tables']['requests']['Row']
 export type AttachmentRow = Database['public']['Tables']['attachments']['Row']
+export type RequestActivityRow = Database['public']['Tables']['request_activity']['Row']
+export type RequestActivityInsert = Database['public']['Tables']['request_activity']['Insert']
 export type NotificationRow = Database['public']['Tables']['notifications']['Row']
 
 export type RequestInsert = Database['public']['Tables']['requests']['Insert']
@@ -280,7 +347,8 @@ export type RequestWithClient = RequestRow & {
   users: Pick<UserRow, 'id' | 'full_name' | 'email' | 'avatar_url'>
 }
 
-export type RequestWithAttachments = RequestRow & {
-  attachments: AttachmentRow[]
-  users: Pick<UserRow, 'id' | 'full_name' | 'email'>
+export type RequestWithDetails = RequestRow & {
+  attachments?: AttachmentRow[]
+  activity?: (RequestActivityRow & { actor?: Pick<UserRow, 'full_name' | 'email'> | null })[]
+  users?: Pick<UserRow, 'id' | 'full_name' | 'email' | 'avatar_url'>
 }

@@ -2,7 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { type OrgRow, type UserRow } from '@/lib/database.types'
+import { type UserRow } from '@/lib/database.types'
 
 interface SignUpParams {
   orgName: string
@@ -33,13 +33,11 @@ export async function signUpWithOrg({
     .replace(/(^-|-$)/g, '') || 'agency'
   const slug = `${baseSlug}-${Math.random().toString(36).substring(2, 7)}`
 
-  const { data: orgData, error: orgError } = await (adminSupabase
-    .from('organizations') as any)
+  const { data: org, error: orgError } = await adminSupabase
+    .from('organizations')
     .insert({ name: orgName, slug })
     .select('id')
     .single()
-
-  const org = orgData as Pick<OrgRow, 'id'> | null
 
   if (orgError || !org) {
     console.error('[signUpWithOrg] org insert error:', orgError)
@@ -67,7 +65,7 @@ export async function signUpWithOrg({
     return { error: authError.message }
   }
 
-  // 3. Ensure public.users row exists (in case trigger is missing or delayed)
+  // 3. Ensure public.users row exists (fallback in case trigger is delayed)
   if (authData.user) {
     const { data: existingUser } = await adminSupabase
       .from('users')
@@ -76,7 +74,7 @@ export async function signUpWithOrg({
       .maybeSingle()
 
     if (!existingUser) {
-      const { error: userInsertError } = await (adminSupabase.from('users') as any).insert({
+      const { error: userInsertError } = await adminSupabase.from('users').insert({
         id: authData.user.id,
         org_id: org.id,
         role: 'ADMIN',
@@ -89,7 +87,6 @@ export async function signUpWithOrg({
     }
   }
 
-  // If Supabase project requires email confirmation, session will be null
   if (!authData.session) {
     return { requiresConfirmation: true }
   }
@@ -118,7 +115,7 @@ export async function createClientAccount(params: {
   const supabase = await createClient()
   const adminSupabase = await createAdminClient()
 
-  // Verify the caller is an ADMIN
+  // Verify caller is an ADMIN
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -136,9 +133,9 @@ export async function createClientAccount(params: {
     return { error: 'Only admins can create client accounts' }
   }
 
-  const orgId = callerProfile!.org_id
+  const orgId = callerProfile.org_id
 
-  // Create the auth user
+  // Create the auth user with client role metadata
   const { data: newAuthUser, error: authError } =
     await adminSupabase.auth.admin.createUser({
       email: params.email,

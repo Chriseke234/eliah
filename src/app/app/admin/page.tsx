@@ -1,9 +1,8 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentProfile, getAdminRequests } from '@/lib/queries'
 import { KanbanBoard } from '@/components/admin/KanbanBoard'
 import { EmptyState } from '@/components/ui/empty-state'
 import { LayoutDashboard } from 'lucide-react'
-import { type RequestWithClient, type UserRow } from '@/lib/database.types'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -11,45 +10,13 @@ export const metadata: Metadata = {
 }
 
 export default async function AdminWorkspacePage() {
-  const supabase = await createClient()
+  const profile = await getCurrentProfile()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  // Fetch admin's profile to get org_id
-  const { data: profileData } = await supabase
-    .from('users')
-    .select('org_id, role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  const orgId = profileData?.org_id ?? user.user_metadata?.org_id
-  const role = profileData?.role ?? user.user_metadata?.role
-
-  if (!orgId || role !== 'ADMIN') redirect('/app/client')
-
-  // Fetch all requests in org, including client info
-  const { data: requests, error } = await supabase
-    .from('requests')
-    .select(`
-      *,
-      users:client_id (
-        id,
-        full_name,
-        email,
-        avatar_url
-      )
-    `)
-    .eq('org_id', orgId)
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('[AdminWorkspace]', error)
+  if (!profile || profile.role !== 'ADMIN') {
+    redirect('/app/client')
   }
 
-  const typedRequests = (requests ?? []) as unknown as RequestWithClient[]
+  const typedRequests = await getAdminRequests(profile.org_id)
 
   const stats = {
     total: typedRequests.length,

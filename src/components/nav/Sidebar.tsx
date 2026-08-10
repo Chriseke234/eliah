@@ -9,15 +9,16 @@ import {
   Users,
   LogOut,
   ChevronDown,
-  Bell,
+  Settings,
+  Building2,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { type UserRow } from '@/lib/database.types'
+import { type UserRow, type OrgRow } from '@/lib/database.types'
 import { cn } from '@/lib/utils'
 
 interface SidebarProps {
   profile: UserRow
-  orgName: string
+  org: OrgRow | null
 }
 
 const clientNav = [
@@ -27,9 +28,10 @@ const clientNav = [
 const adminNav = [
   { href: '/app/admin', label: 'Workspace', icon: Kanban },
   { href: '/app/admin/clients', label: 'Clients', icon: Users },
+  { href: '/app/admin/settings', label: 'Agency Branding', icon: Settings },
 ]
 
-export function Sidebar({ profile, orgName }: SidebarProps) {
+export function Sidebar({ profile, org }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -50,18 +52,28 @@ export function Sidebar({ profile, orgName }: SidebarProps) {
     ? profile.full_name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : (profile?.email ?? 'US').slice(0, 2).toUpperCase()
 
+  const orgName = org?.name ?? 'Agency Portal'
+
   return (
     <aside className="hidden lg:flex flex-col w-64 border-r border-slate-800/60 bg-slate-950 shrink-0">
-      {/* Logo / Org */}
+      {/* Logo / Org Header */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-800/60">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-          <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-white" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-          </svg>
-        </div>
+        {org?.logo_url ? (
+          <img
+            src={org.logo_url}
+            alt={orgName}
+            className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
+          />
+        ) : (
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+            <Building2 className="w-4 h-4 text-white" />
+          </div>
+        )}
         <div className="min-w-0">
           <p className="text-sm font-semibold text-white truncate">{orgName}</p>
-          <p className="text-xs text-slate-400 truncate capitalize">{(profile?.role ?? 'CLIENT').toLowerCase()} portal</p>
+          <p className="text-xs text-slate-400 truncate capitalize">
+            {(profile?.role ?? 'CLIENT').toLowerCase()} portal
+          </p>
         </div>
       </div>
 
@@ -93,18 +105,7 @@ export function Sidebar({ profile, orgName }: SidebarProps) {
         })}
       </nav>
 
-      {/* Notifications hint */}
-      <div className="px-3 pb-2">
-        <Link
-          href={profile.role === 'ADMIN' ? '/app/admin' : '/app/client'}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-all"
-        >
-          <Bell className="w-4 h-4 text-slate-500" />
-          Notifications
-        </Link>
-      </div>
-
-      {/* User footer */}
+      {/* User Footer */}
       <div className="px-3 pb-4 border-t border-slate-800/60 pt-3">
         <div className="relative">
           <button
@@ -130,7 +131,7 @@ export function Sidebar({ profile, orgName }: SidebarProps) {
 
           {userMenuOpen && (
             <div
-              className="absolute bottom-full left-0 right-0 mb-1 bg-slate-900 border border-slate-700/60 rounded-xl shadow-xl overflow-hidden"
+              className="absolute bottom-full left-0 right-0 mb-1 bg-slate-900 border border-slate-700/60 rounded-xl shadow-xl overflow-hidden z-50"
               role="menu"
             >
               <button

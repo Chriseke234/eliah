@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getCurrentProfile } from '@/lib/queries'
 import { createClient } from '@/lib/supabase/server'
 import { ClientTable } from '@/components/admin/ClientTable'
 import { CreateClientButton } from '@/components/admin/CreateClientButton'
@@ -12,28 +13,17 @@ export const metadata: Metadata = {
 }
 
 export default async function ClientsPage() {
+  const profile = await getCurrentProfile()
+
+  if (!profile || profile.role !== 'ADMIN') {
+    redirect('/app/client')
+  }
+
   const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profileData } = await supabase
-    .from('users')
-    .select('org_id, role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  const orgId = profileData?.org_id ?? user.user_metadata?.org_id
-  const role = profileData?.role ?? user.user_metadata?.role
-
-  if (!orgId || role !== 'ADMIN') redirect('/app/client')
-
   const { data: clients, error } = await supabase
     .from('users')
     .select('*')
-    .eq('org_id', orgId)
+    .eq('org_id', profile.org_id)
     .eq('role', 'CLIENT')
     .order('created_at', { ascending: false })
 
