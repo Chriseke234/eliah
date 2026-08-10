@@ -13,6 +13,7 @@ The platform has been audited, stabilized, and refactored into a **reusable mult
 - **Agency Customization**: White-label branding architecture allows agencies to configure custom agency names, logo URLs, and primary/secondary accent colors.
 - **Payment Handling**: Agencies supply external payment URLs (Stripe, Paystack, Flutterwave) per request. The platform does NOT process or hold client payments directly.
 - **Auditability**: Request activity audit feed (`request_activity`) records history of status changes, file uploads, and payment link updates.
+- **Signup Reliability**: Fully debugged and verified E2E without React Error #441.
 
 ---
 
@@ -39,6 +40,7 @@ The platform has been audited, stabilized, and refactored into a **reusable mult
    - Removed all `as any` type assertions from server actions (`auth.ts`, `requests.ts`, `attachments.ts`, `settings.ts`).
 4. **Storage & Security Hardening**:
    - Created migration `002_branding_and_activity.sql` including storage bucket configuration (`request-attachments`).
+   - Created migration `003_signup_org_policy.sql` adding RLS policies for agency signup org creation (`org_insert_anon_signup`).
    - Ensured no service-role credentials are ever exposed to the client bundle.
 
 ---
@@ -48,6 +50,7 @@ The platform has been audited, stabilized, and refactored into a **reusable mult
 - [x] **Build**: `npm run build` succeeds cleanly with zero errors.
 - [x] **TypeScript**: Type check passes with strict typing.
 - [x] **Authentication**: SSR cookie-based auth session management verified.
+- [x] **E2E Signup Verification**: Tested signup flow end-to-end via automated browser subagent. Form submission succeeded with zero React rendering errors or exceptions.
 - [x] **Multi-Tenancy**: Organization isolation verified through RLS policies and server-side authorization checks.
 - [x] **Responsiveness**: Mobile navigation drawer, responsive stats grid, and horizontally scrollable Kanban board verified.
 
@@ -59,6 +62,7 @@ The platform has been audited, stabilized, and refactored into a **reusable mult
 Apply migrations in your Supabase project SQL Editor in order:
 1. [001_init.sql](file:///c:/Users/CHRIS/OneDrive/Documents/Eliah/eliah-portal/supabase/migrations/001_init.sql)
 2. [002_branding_and_activity.sql](file:///c:/Users/CHRIS/OneDrive/Documents/Eliah/eliah-portal/supabase/migrations/002_branding_and_activity.sql)
+3. [003_signup_org_policy.sql](file:///c:/Users/CHRIS/OneDrive/Documents/Eliah/eliah-portal/supabase/migrations/003_signup_org_policy.sql)
 
 ### Environment Variables
 Configure on Vercel or local `.env.local`:
