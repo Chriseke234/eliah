@@ -1,12 +1,13 @@
 'use client'
 
-import { type RequestWithClient } from '@/lib/database.types'
+import { type RequestWithClient, type RequestStatus } from '@/lib/database.types'
 import { formatRelativeDate } from '@/lib/utils'
-import { CreditCard, Paperclip, GripVertical, Clock, UserCheck } from 'lucide-react'
+import { CreditCard, GripVertical, Clock, MoreHorizontal } from 'lucide-react'
 
 interface KanbanCardProps {
   request: RequestWithClient
   onClick: () => void
+  onStatusChange?: (newStatus: RequestStatus) => void
 }
 
 // Unsplash avatar presets for clients
@@ -18,9 +19,8 @@ const CLIENT_AVATARS = [
   'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80',
 ]
 
-export function KanbanCard({ request, onClick }: KanbanCardProps) {
+export function KanbanCard({ request, onClick, onStatusChange }: KanbanCardProps) {
   const clientName = request.users?.full_name || request.users?.email || 'Client'
-  const initials = clientName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
   
   // Pick deterministic avatar index from client name
   const avatarIndex = (clientName.charCodeAt(0) + (clientName.charCodeAt(1) || 0)) % CLIENT_AVATARS.length
@@ -33,13 +33,31 @@ export function KanbanCard({ request, onClick }: KanbanCardProps) {
       aria-label={`Request: ${request.title}. Click to open details.`}
     >
       {/* Header */}
-      <div className="flex items-start justify-between gap-2 mb-2.5">
+      <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <GripVertical className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 flex-shrink-0 transition-colors" />
           <h3 className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors line-clamp-2 leading-snug">
             {request.title}
           </h3>
         </div>
+
+        {/* Quick status dropdown */}
+        {onStatusChange && (
+          <select
+            value={request.status}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => {
+              e.stopPropagation()
+              onStatusChange(e.target.value as RequestStatus)
+            }}
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-slate-400 focus:text-white focus:outline-none cursor-pointer flex-shrink-0"
+          >
+            <option value="TODO">TODO</option>
+            <option value="IN_PROGRESS">PROG</option>
+            <option value="IN_REVIEW">REV</option>
+            <option value="COMPLETED">DONE</option>
+          </select>
+        )}
       </div>
 
       {/* Description */}
@@ -50,7 +68,7 @@ export function KanbanCard({ request, onClick }: KanbanCardProps) {
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-800/60">
+      <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-800/60">
         {/* Client Avatar + Name */}
         <div className="flex items-center gap-2 min-w-0">
           <img
@@ -58,7 +76,6 @@ export function KanbanCard({ request, onClick }: KanbanCardProps) {
             alt={clientName}
             className="w-5 h-5 rounded-full object-cover border border-slate-700/80 flex-shrink-0"
             onError={(e) => {
-              // Hide image if fails and display fallback
               (e.target as HTMLElement).style.display = 'none'
             }}
           />

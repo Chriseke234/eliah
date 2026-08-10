@@ -1,14 +1,12 @@
 import type { Metadata } from 'next'
-import { Inter, Geist } from 'next/font/google'
+import { Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils'
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
-
-const inter = Inter({
+const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-inter',
+  variable: '--font-sans',
 })
 
 export const metadata: Metadata = {
@@ -26,8 +24,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={cn("font-sans", geist.variable)} suppressHydrationWarning>
-      <body className="min-h-screen bg-background font-sans antialiased">
+    <html lang="en" className={cn('font-sans', plusJakartaSans.variable)} suppressHydrationWarning>
+      <body className="min-h-screen bg-slate-950 font-sans antialiased text-slate-100">
         {children}
       </body>
     </html>
