@@ -60,3 +60,16 @@ ALTER TABLE public.organizations
   ADD COLUMN IF NOT EXISTS auto_assign_enabled BOOLEAN DEFAULT FALSE,
   ADD COLUMN IF NOT EXISTS default_assignee_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS auto_notify_agency BOOLEAN DEFAULT TRUE;
+
+-- 4. Per-User Per-Request Chat Read/Unread Tracker
+CREATE TABLE IF NOT EXISTS public.request_read_states (
+  request_id UUID NOT NULL REFERENCES public.requests(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  last_read_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (request_id, user_id)
+);
+
+ALTER TABLE public.request_read_states ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "read_states_user_all" ON public.request_read_states
+  FOR ALL USING (user_id = auth.uid());

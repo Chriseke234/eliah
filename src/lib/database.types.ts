@@ -367,6 +367,39 @@ export interface Database {
           }
         ]
       }
+      request_read_states: {
+        Row: {
+          request_id: string
+          user_id: string
+          last_read_at: string
+        }
+        Insert: {
+          request_id: string
+          user_id: string
+          last_read_at?: string
+        }
+        Update: {
+          request_id?: string
+          user_id?: string
+          last_read_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_read_states_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_read_states_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       notifications: {
         Row: {
           id: string
@@ -458,6 +491,7 @@ export type RequestActivityRow = Database['public']['Tables']['request_activity'
 export type RequestActivityInsert = Database['public']['Tables']['request_activity']['Insert']
 export type RequestTimeEntryRow = Database['public']['Tables']['request_time_entries']['Row']
 export type RequestCommentRow = Database['public']['Tables']['request_comments']['Row']
+export type RequestReadStateRow = Database['public']['Tables']['request_read_states']['Row']
 export type NotificationRow = Database['public']['Tables']['notifications']['Row']
 
 export type RequestCommentWithSender = RequestCommentRow & {

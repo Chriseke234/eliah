@@ -65,6 +65,15 @@ export async function postComment(params: {
       return { error: error?.message ?? 'Failed to post message' }
     }
 
+    // Log lightweight reference in request_activity
+    await supabase.from('request_activity').insert({
+      request_id: params.requestId,
+      org_id: req.org_id,
+      actor_id: user.id,
+      action_type: 'STATUS_UPDATED',
+      details: `New message from ${senderName}`,
+    })
+
     // Trigger notification to the counterpart user
     // If sender is CLIENT, notify org admins; if sender is ADMIN, notify client
     const targetUserId = profile?.role === 'CLIENT' ? null : req.client_id
@@ -73,7 +82,7 @@ export async function postComment(params: {
       await supabase.from('notifications').insert({
         user_id: targetUserId,
         org_id: req.org_id,
-        title: `New Comment on "${req.title}"`,
+        title: `New Message on "${req.title}"`,
         body: `${senderName}: ${params.message.slice(0, 80)}`,
         type: 'INFO',
         request_id: params.requestId,
@@ -221,5 +230,90 @@ export async function getRequestComments(
   } catch (err) {
     console.error('[getRequestComments] error:', err)
     return []
+  }
+}
+
+/**
+ * Marks a request's chat thread as read for the current user.
+ */
+export async function markRequestAsRead(requestId: string): Promise<{ error?: string }> {
+  try {
+    const supabase = await createClient()
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { error: 'Not authenticated' }
+
+    const { error } = await supabase.from('request_read_states').upsert(
+      {
+        request_id: requestId,
+        user_id: user.id,
+        last_read_at: new Date().toISOString(),
+      },
+      { onConflict: 'request_id,user_id' }
+    )
+
+    if (error) {
+      console.error('[markRequestAsRead]', error)
+      return { error: error.message }
+    }
+
+    revalidatePath('/app/admin')
+    revalidatePath('/app/client')
+
+    return {}
+  } catch (err: any) {
+    console.error('[markRequestAsRead] error:', err)
+    return { error: err?.message ?? 'Failed to mark as read' }
+  }
+}
+
+/**
+ * Gets a set of request IDs that have unread chat messages for the current user.
+ */
+export async function getUnreadChatRequests(): Promise<{
+  unreadRequestIds: string[]
+  unreadCount: number
+}> {
+  try {
+    const supabase = await createClient()
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { unreadRequestIds: [], unreadCount: 0 }
+
+    // Fetch user's read states
+    const { data: readStates } = await supabase
+      .from('request_read_states')
+      .select('request_id, last_read_at')
+      .eq('user_id', user.id)
+
+    const readStateMap = new Map<string, string>()
+    ;(readStates ?? []).forEach((r) => {
+      readStateMap.set(r.request_id, r.last_read_at)
+    })
+
+    // Fetch recent comments excluding those sent by current user
+    const { data: recentComments } = await supabase
+      .from('request_comments')
+      .select('request_id, created_at, sender_id')
+      .neq('sender_id', user.id)
+
+    const unreadSet = new Set<string>()
+
+    ;(recentComments ?? []).forEach((c) => {
+      const lastRead = readStateMap.get(c.request_id)
+      if (!lastRead || new Date(c.created_at) > new Date(lastRead)) {
+        unreadSet.add(c.request_id)
+      }
+    })
+
+    const unreadRequestIds = Array.from(unreadSet)
+    return { unreadRequestIds, unreadCount: unreadRequestIds.length }
+  } catch (err) {
+    console.error('[getUnreadChatRequests] error:', err)
+    return { unreadRequestIds: [], unreadCount: 0 }
   }
 }

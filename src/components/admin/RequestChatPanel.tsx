@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition } from 'react'
 import { Send, Paperclip, Video, ExternalLink, Loader2, MessageSquare, FileText, CheckCircle2 } from 'lucide-react'
-import { postComment, getRequestComments } from '@/app/actions/chat'
+import { postComment, getRequestComments, markRequestAsRead } from '@/app/actions/chat'
 import { type RequestCommentWithSender } from '@/lib/database.types'
 import { createClient } from '@/lib/supabase/client'
 import { ScheduleCallModal } from './ScheduleCallModal'
@@ -40,6 +40,9 @@ export function RequestChatPanel({ requestId }: RequestChatPanelProps) {
     setComments(list)
     setLoading(false)
     scrollToBottom()
+
+    // Mark as read when viewing thread
+    markRequestAsRead(requestId)
   }
 
   const scrollToBottom = () => {

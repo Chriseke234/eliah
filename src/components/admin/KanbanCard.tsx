@@ -2,13 +2,14 @@
 
 import { type RequestWithClient, type RequestStatus } from '@/lib/database.types'
 import { formatRelativeDate } from '@/lib/utils'
-import { CreditCard, GripVertical, Clock, MoreHorizontal } from 'lucide-react'
+import { CreditCard, GripVertical, Clock, MessageSquare } from 'lucide-react'
 
 interface KanbanCardProps {
   request: RequestWithClient
   onClick: () => void
   onStatusChange?: (newStatus: RequestStatus) => void
   timeLoggedText?: string
+  hasUnreadMessages?: boolean
 }
 
 // Unsplash avatar presets for clients
@@ -20,7 +21,7 @@ const CLIENT_AVATARS = [
   'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80',
 ]
 
-export function KanbanCard({ request, onClick, onStatusChange, timeLoggedText }: KanbanCardProps) {
+export function KanbanCard({ request, onClick, onStatusChange, timeLoggedText, hasUnreadMessages }: KanbanCardProps) {
   const clientName = request.users?.full_name || request.users?.email || 'Client'
   
   // Pick deterministic avatar index from client name
@@ -85,6 +86,11 @@ export function KanbanCard({ request, onClick, onStatusChange, timeLoggedText }:
 
         {/* Status Indicators */}
         <div className="flex items-center gap-2 flex-shrink-0">
+          {hasUnreadMessages && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-violet-600 text-white text-[10px] font-bold shadow-md animate-pulse">
+              <MessageSquare className="w-3 h-3 fill-current" /> New
+            </span>
+          )}
           {timeLoggedText && (
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-300 text-[10px] font-semibold">
               <Clock className="w-3 h-3 text-violet-400" /> {timeLoggedText}
