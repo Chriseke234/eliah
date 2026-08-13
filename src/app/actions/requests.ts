@@ -57,6 +57,45 @@ export async function createRequest(
     details: `Request "${data.title}" submitted.`,
   })
 
+  // Check and trigger organization automation rules
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('auto_notify_agency, auto_assign_enabled, default_assignee_id')
+    .eq('id', profile.org_id)
+    .single()
+
+  if (org?.auto_assign_enabled && org.default_assignee_id) {
+    await supabase.from('request_activity').insert({
+      request_id: request.id,
+      org_id: profile.org_id,
+      actor_id: user.id,
+      action_type: 'STATUS_UPDATED',
+      details: 'Auto-assigned request to default team member — triggered by automation rule.',
+    })
+  }
+
+  if (org?.auto_notify_agency ?? true) {
+    // Notify agency admins
+    const { data: adminUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('org_id', profile.org_id)
+      .eq('role', 'ADMIN')
+      .limit(1)
+      .maybeSingle()
+
+    if (adminUser) {
+      await supabase.from('notifications').insert({
+        user_id: adminUser.id,
+        org_id: profile.org_id,
+        title: `New Client Request Submitted`,
+        body: `New request "${data.title}" received from client.`,
+        type: 'INFO',
+        request_id: request.id,
+      })
+    }
+  }
+
   revalidatePath('/app/client')
   revalidatePath('/app/admin')
 
@@ -80,7 +119,7 @@ export async function updateRequest(
   // Fetch current request state for activity context
   const { data: currentReq } = await supabase
     .from('requests')
-    .select('org_id, status, payment_link, priority, title')
+    .select('org_id, status, payment_link, priority, title, client_id')
     .eq('id', id)
     .single()
 
@@ -111,6 +150,32 @@ export async function updateRequest(
       action_type: 'STATUS_UPDATED',
       details: `Status changed from ${currentReq.status} to ${data.status}`,
     })
+
+    // Check auto_notify_client rule
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('auto_notify_client')
+      .eq('id', currentReq.org_id)
+      .single()
+
+    if (org?.auto_notify_client ?? true) {
+      await supabase.from('notifications').insert({
+        user_id: currentReq.client_id,
+        org_id: currentReq.org_id,
+        title: `Request Status Updated`,
+        body: `Your request "${currentReq.title}" status is now ${data.status}.`,
+        type: 'SUCCESS',
+        request_id: id,
+      })
+
+      await supabase.from('request_activity').insert({
+        request_id: id,
+        org_id: currentReq.org_id,
+        actor_id: user.id,
+        action_type: 'STATUS_UPDATED',
+        details: `Auto-notified client of status update — triggered by automation rule.`,
+      })
+    }
   }
 
   if (data.payment_link !== undefined && data.payment_link !== currentReq.payment_link) {

@@ -18,6 +18,11 @@ export function BrandingForm({ org }: BrandingFormProps) {
   const [secondaryColor, setSecondaryColor] = useState(org.secondary_color ?? '#6366f1')
   const [customDomain, setCustomDomain] = useState(org.custom_domain ?? '')
 
+  // Automation rule states
+  const [autoNotifyClient, setAutoNotifyClient] = useState(org.auto_notify_client ?? true)
+  const [autoAssignEnabled, setAutoAssignEnabled] = useState(org.auto_assign_enabled ?? false)
+  const [autoNotifyAgency, setAutoNotifyAgency] = useState(org.auto_notify_agency ?? true)
+
   const [isPending, startTransition] = useTransition()
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -74,6 +79,9 @@ export function BrandingForm({ org }: BrandingFormProps) {
         primaryColor,
         secondaryColor,
         customDomain: customDomain.trim() || undefined,
+        autoNotifyClient,
+        autoAssignEnabled,
+        autoNotifyAgency,
       })
 
       if (res.error) {
@@ -233,6 +241,66 @@ export function BrandingForm({ org }: BrandingFormProps) {
                 value={secondaryColor}
                 onChange={(e) => setSecondaryColor(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/40 uppercase font-mono"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Scoped Automation Rules Section */}
+        <div className="space-y-4 pt-4 border-t border-slate-800/80">
+          <div>
+            <h3 className="text-xs font-semibold text-white uppercase tracking-wider flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-violet-400" /> Fixed Workflow Automation Rules
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              Configure automatic background actions for request status updates, assignments, and notifications.
+            </p>
+          </div>
+
+          <div className="space-y-3 bg-slate-950/60 rounded-2xl border border-slate-800/80 p-4">
+            {/* Rule 1: Auto-notify client on status change */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold text-slate-200">Auto-notify client on status change</p>
+                <p className="text-[11px] text-slate-500">Automatically dispatches in-app notification when a request is moved across stages.</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={autoNotifyClient}
+                onChange={(e) => setAutoNotifyClient(e.target.checked)}
+                className="w-4 h-4 accent-violet-600 rounded cursor-pointer flex-shrink-0"
+              />
+            </div>
+
+            <div className="border-t border-slate-800/60" />
+
+            {/* Rule 2: Auto-assign new requests */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold text-slate-200">Auto-assign new client requests</p>
+                <p className="text-[11px] text-slate-500">Automatically logs assignment activity on newly submitted client deliverables.</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={autoAssignEnabled}
+                onChange={(e) => setAutoAssignEnabled(e.target.checked)}
+                className="w-4 h-4 accent-violet-600 rounded cursor-pointer flex-shrink-0"
+              />
+            </div>
+
+            <div className="border-t border-slate-800/60" />
+
+            {/* Rule 3: Auto-notify agency team on submission */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold text-slate-200">Auto-notify agency on request submission</p>
+                <p className="text-[11px] text-slate-500">Dispatches an instant alert to agency team leads when a client creates a request.</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={autoNotifyAgency}
+                onChange={(e) => setAutoNotifyAgency(e.target.checked)}
+                className="w-4 h-4 accent-violet-600 rounded cursor-pointer flex-shrink-0"
               />
             </div>
           </div>

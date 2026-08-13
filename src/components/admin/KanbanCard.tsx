@@ -8,6 +8,7 @@ interface KanbanCardProps {
   request: RequestWithClient
   onClick: () => void
   onStatusChange?: (newStatus: RequestStatus) => void
+  timeLoggedText?: string
 }
 
 // Unsplash avatar presets for clients
@@ -19,7 +20,7 @@ const CLIENT_AVATARS = [
   'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80',
 ]
 
-export function KanbanCard({ request, onClick, onStatusChange }: KanbanCardProps) {
+export function KanbanCard({ request, onClick, onStatusChange, timeLoggedText }: KanbanCardProps) {
   const clientName = request.users?.full_name || request.users?.email || 'Client'
   
   // Pick deterministic avatar index from client name
@@ -84,6 +85,11 @@ export function KanbanCard({ request, onClick, onStatusChange }: KanbanCardProps
 
         {/* Status Indicators */}
         <div className="flex items-center gap-2 flex-shrink-0">
+          {timeLoggedText && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-300 text-[10px] font-semibold">
+              <Clock className="w-3 h-3 text-violet-400" /> {timeLoggedText}
+            </span>
+          )}
           {request.payment_link && (
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-semibold">
               <CreditCard className="w-3 h-3" /> Paid

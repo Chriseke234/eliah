@@ -3,6 +3,8 @@
 import { useState, useTransition, useEffect } from 'react'
 import { updateRequest } from '@/app/actions/requests'
 import { getSignedUrl } from '@/app/actions/attachments'
+import { TimeTrackerControl } from './TimeTrackerControl'
+import { RequestChatPanel } from './RequestChatPanel'
 import { createClient } from '@/lib/supabase/client'
 import { type RequestWithClient, type RequestStatus, type AttachmentRow, type RequestActivityRow } from '@/lib/database.types'
 import { formatDate, formatFileSize } from '@/lib/utils'
@@ -214,6 +216,9 @@ export function RequestDrawer({ request, open, onClose, onUpdate }: RequestDrawe
               </div>
             </div>
 
+            {/* Time Tracking Control */}
+            <TimeTrackerControl requestId={request.id} />
+
             {/* Meta info grid */}
             <div className="grid grid-cols-2 gap-4 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4">
               <div className="space-y-1">
@@ -337,6 +342,9 @@ export function RequestDrawer({ request, open, onClose, onUpdate }: RequestDrawe
                 </div>
               )}
             </div>
+
+            {/* Request Chat & Scheduled Calls Panel */}
+            <RequestChatPanel requestId={request.id} />
 
             {/* Activity History Timeline */}
             <div className="space-y-3 pt-2">

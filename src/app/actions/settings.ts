@@ -10,6 +10,10 @@ export async function updateOrganizationBranding(params: {
   primaryColor?: string
   secondaryColor?: string
   customDomain?: string
+  autoNotifyClient?: boolean
+  autoAssignEnabled?: boolean
+  defaultAssigneeId?: string
+  autoNotifyAgency?: boolean
 }): Promise<{ error?: string; success?: boolean }> {
   const supabase = await createClient()
 
@@ -61,6 +65,10 @@ export async function updateOrganizationBranding(params: {
     primary_color: params.primaryColor || '#8b5cf6',
     secondary_color: params.secondaryColor || '#6366f1',
     custom_domain: cleanDomain,
+    auto_notify_client: params.autoNotifyClient ?? true,
+    auto_assign_enabled: params.autoAssignEnabled ?? false,
+    default_assignee_id: params.defaultAssigneeId || null,
+    auto_notify_agency: params.autoNotifyAgency ?? true,
   }
 
   const { error } = await supabase

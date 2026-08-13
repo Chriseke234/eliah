@@ -29,6 +29,10 @@ export interface Database {
           secondary_color: string | null
           favicon_url: string | null
           custom_domain: string | null
+          auto_notify_client: boolean
+          auto_assign_enabled: boolean
+          default_assignee_id: string | null
+          auto_notify_agency: boolean
           created_at: string
         }
         Insert: {
@@ -40,6 +44,10 @@ export interface Database {
           secondary_color?: string | null
           favicon_url?: string | null
           custom_domain?: string | null
+          auto_notify_client?: boolean
+          auto_assign_enabled?: boolean
+          default_assignee_id?: string | null
+          auto_notify_agency?: boolean
           created_at?: string
         }
         Update: {
@@ -51,6 +59,10 @@ export interface Database {
           secondary_color?: string | null
           favicon_url?: string | null
           custom_domain?: string | null
+          auto_notify_client?: boolean
+          auto_assign_enabled?: boolean
+          default_assignee_id?: string | null
+          auto_notify_agency?: boolean
           created_at?: string
         }
         Relationships: []
@@ -250,6 +262,111 @@ export interface Database {
           }
         ]
       }
+      request_time_entries: {
+        Row: {
+          id: string
+          request_id: string
+          org_id: string
+          user_id: string
+          start_time: string
+          end_time: string | null
+          duration_seconds: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          org_id: string
+          user_id: string
+          start_time: string
+          end_time?: string | null
+          duration_seconds?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          org_id?: string
+          user_id?: string
+          start_time?: string
+          end_time?: string | null
+          duration_seconds?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_time_entries_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_time_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      request_comments: {
+        Row: {
+          id: string
+          request_id: string
+          org_id: string
+          sender_id: string | null
+          message: string
+          attachment_path: string | null
+          attachment_name: string | null
+          call_link: string | null
+          call_title: string | null
+          is_system: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          org_id: string
+          sender_id?: string | null
+          message: string
+          attachment_path?: string | null
+          attachment_name?: string | null
+          call_link?: string | null
+          call_title?: string | null
+          is_system?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          org_id?: string
+          sender_id?: string | null
+          message?: string
+          attachment_path?: string | null
+          attachment_name?: string | null
+          call_link?: string | null
+          call_title?: string | null
+          is_system?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_comments_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_comments_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       notifications: {
         Row: {
           id: string
@@ -339,7 +456,13 @@ export type RequestRow = Database['public']['Tables']['requests']['Row']
 export type AttachmentRow = Database['public']['Tables']['attachments']['Row']
 export type RequestActivityRow = Database['public']['Tables']['request_activity']['Row']
 export type RequestActivityInsert = Database['public']['Tables']['request_activity']['Insert']
+export type RequestTimeEntryRow = Database['public']['Tables']['request_time_entries']['Row']
+export type RequestCommentRow = Database['public']['Tables']['request_comments']['Row']
 export type NotificationRow = Database['public']['Tables']['notifications']['Row']
+
+export type RequestCommentWithSender = RequestCommentRow & {
+  sender?: Pick<UserRow, 'id' | 'full_name' | 'email' | 'avatar_url'> | null
+}
 
 export type RequestInsert = Database['public']['Tables']['requests']['Insert']
 export type RequestUpdate = Database['public']['Tables']['requests']['Update']
