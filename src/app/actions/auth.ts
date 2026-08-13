@@ -137,13 +137,14 @@ export async function signOut(): Promise<void> {
 
 /**
  * Admin creates a new CLIENT account in their org.
- * Uses the service role key to bypass RLS for user creation.
+ * Supports both email invitation link generation and manual password assignment.
  */
 export async function createClientAccount(params: {
   email: string
   fullName: string
-  password: string
-}): Promise<{ error?: string; userId?: string }> {
+  password?: string
+  inviteMethod?: 'email' | 'password'
+}): Promise<{ error?: string; userId?: string; inviteLink?: string; invited?: boolean }> {
   try {
     const supabase = await createClient()
     const adminSupabase = await createAdminClient()
@@ -167,26 +168,70 @@ export async function createClientAccount(params: {
     }
 
     const orgId = callerProfile.org_id
+    const method = params.inviteMethod ?? (params.password ? 'password' : 'email')
 
-    // Create the auth user with client role metadata
-    const { data: newAuthUser, error: authError } =
-      await adminSupabase.auth.admin.createUser({
+    if (method === 'email') {
+      // 1. Send invite email & generate magic invite link
+      const { data: inviteData, error: inviteError } =
+        await adminSupabase.auth.admin.inviteUserByEmail(params.email, {
+          data: {
+            org_id: orgId,
+            full_name: params.fullName,
+            role: 'CLIENT',
+          },
+        })
+
+      // Generate action link so admin can copy the invite link immediately
+      const { data: linkData } = await adminSupabase.auth.admin.generateLink({
+        type: 'invite',
         email: params.email,
-        password: params.password,
-        email_confirm: true,
-        user_metadata: {
-          org_id: orgId,
-          full_name: params.fullName,
-          role: 'CLIENT',
+        options: {
+          data: {
+            org_id: orgId,
+            full_name: params.fullName,
+            role: 'CLIENT',
+          },
         },
       })
 
-    if (authError || !newAuthUser.user) {
-      return { error: authError?.message ?? 'Failed to create user' }
-    }
+      if (inviteError && !linkData?.properties?.action_link) {
+        return { error: inviteError.message }
+      }
 
-    revalidatePath('/app/admin/clients')
-    return { userId: newAuthUser.user.id }
+      const createdUserId = inviteData?.user?.id ?? linkData?.user?.id
+      const actionLink = linkData?.properties?.action_link
+
+      revalidatePath('/app/admin/clients')
+      return {
+        userId: createdUserId,
+        inviteLink: actionLink,
+        invited: true,
+      }
+    } else {
+      // 2. Direct manual password creation
+      if (!params.password || params.password.length < 8) {
+        return { error: 'Password must be at least 8 characters long' }
+      }
+
+      const { data: newAuthUser, error: authError } =
+        await adminSupabase.auth.admin.createUser({
+          email: params.email,
+          password: params.password,
+          email_confirm: true,
+          user_metadata: {
+            org_id: orgId,
+            full_name: params.fullName,
+            role: 'CLIENT',
+          },
+        })
+
+      if (authError || !newAuthUser.user) {
+        return { error: authError?.message ?? 'Failed to create user' }
+      }
+
+      revalidatePath('/app/admin/clients')
+      return { userId: newAuthUser.user.id }
+    }
   } catch (err: any) {
     console.error('[createClientAccount] Unexpected exception:', err)
     return { error: err?.message ?? 'Failed to create client account' }

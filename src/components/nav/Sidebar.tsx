@@ -15,6 +15,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { type UserRow, type OrgRow } from '@/lib/database.types'
 import { cn } from '@/lib/utils'
+import { NotificationBell } from './NotificationBell'
 
 interface SidebarProps {
   profile: UserRow
@@ -57,24 +58,27 @@ export function Sidebar({ profile, org }: SidebarProps) {
   return (
     <aside className="hidden lg:flex flex-col w-64 border-r border-slate-800/60 bg-slate-950 shrink-0">
       {/* Logo / Org Header */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-800/60">
-        {org?.logo_url ? (
-          <img
-            src={org.logo_url}
-            alt={orgName}
-            className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
-          />
-        ) : (
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-            <Building2 className="w-4 h-4 text-white" />
+      <div className="flex items-center justify-between px-5 py-5 border-b border-slate-800/60">
+        <div className="flex items-center gap-3 min-w-0">
+          {org?.logo_url ? (
+            <img
+              src={org.logo_url}
+              alt={orgName}
+              className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+              <Building2 className="w-4 h-4 text-white" />
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-white truncate">{orgName}</p>
+            <p className="text-xs text-slate-400 truncate capitalize">
+              {(profile?.role ?? 'CLIENT').toLowerCase()} portal
+            </p>
           </div>
-        )}
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-white truncate">{orgName}</p>
-          <p className="text-xs text-slate-400 truncate capitalize">
-            {(profile?.role ?? 'CLIENT').toLowerCase()} portal
-          </p>
         </div>
+        <NotificationBell />
       </div>
 
       {/* Navigation */}

@@ -9,6 +9,7 @@ export async function updateOrganizationBranding(params: {
   logoUrl?: string
   primaryColor?: string
   secondaryColor?: string
+  customDomain?: string
 }): Promise<{ error?: string; success?: boolean }> {
   const supabase = await createClient()
 
@@ -30,11 +31,36 @@ export async function updateOrganizationBranding(params: {
     return { error: 'Only organization administrators can update branding settings' }
   }
 
+  // Clean custom domain if provided
+  let cleanDomain: string | null = null
+  if (params.customDomain?.trim()) {
+    cleanDomain = params.customDomain
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/\/.*$/, '')
+  }
+
+  // Check if customDomain is already in use by another organization
+  if (cleanDomain) {
+    const { data: existingOrg } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('custom_domain', cleanDomain)
+      .neq('id', userProfile.org_id)
+      .maybeSingle()
+
+    if (existingOrg) {
+      return { error: `Domain '${cleanDomain}' is already assigned to another agency.` }
+    }
+  }
+
   const updateData: OrgUpdate = {
     name: params.name,
     logo_url: params.logoUrl || null,
     primary_color: params.primaryColor || '#8b5cf6',
     secondary_color: params.secondaryColor || '#6366f1',
+    custom_domain: cleanDomain,
   }
 
   const { error } = await supabase

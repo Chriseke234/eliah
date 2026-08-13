@@ -18,11 +18,17 @@ export default async function AdminWorkspacePage() {
 
   const typedRequests = await getAdminRequests(profile.org_id)
 
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+
   const stats = {
     total: typedRequests.length,
     todo: typedRequests.filter((r) => r.status === 'TODO').length,
     inProgress: typedRequests.filter((r) => r.status === 'IN_PROGRESS').length,
     completed: typedRequests.filter((r) => r.status === 'COMPLETED').length,
+    totalThisWeek: typedRequests.filter((r) => new Date(r.created_at) >= sevenDaysAgo).length,
+    completedThisWeek: typedRequests.filter(
+      (r) => r.status === 'COMPLETED' && new Date(r.updated_at || r.created_at) >= sevenDaysAgo
+    ).length,
   }
 
   return (
@@ -43,7 +49,7 @@ export default async function AdminWorkspacePage() {
           </div>
         </div>
 
-        {/* Glassmorphic Stats Grid with Icons & Brand Accents */}
+        {/* Glassmorphic Stats Grid with Trend Badges */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total Requests */}
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden group hover:border-slate-700 transition-all">
@@ -53,7 +59,14 @@ export default async function AdminWorkspacePage() {
                 <LayoutDashboard className="w-4 h-4" />
               </div>
             </div>
-            <p className="text-3xl font-extrabold text-white mt-3 tracking-tight">{stats.total}</p>
+            <div className="flex items-baseline justify-between mt-3">
+              <p className="text-3xl font-extrabold text-white tracking-tight">{stats.total}</p>
+              {stats.totalThisWeek > 0 && (
+                <span className="text-[11px] font-semibold text-violet-300 bg-violet-500/10 px-2 py-0.5 rounded-full border border-violet-500/20">
+                  +{stats.totalThisWeek} this week
+                </span>
+              )}
+            </div>
             <p className="text-[11px] text-slate-500 mt-1">Active client deliverables</p>
           </div>
 
@@ -89,7 +102,14 @@ export default async function AdminWorkspacePage() {
                 <CheckCircle2 className="w-4 h-4" />
               </div>
             </div>
-            <p className="text-3xl font-extrabold text-emerald-300 mt-3 tracking-tight">{stats.completed}</p>
+            <div className="flex items-baseline justify-between mt-3">
+              <p className="text-3xl font-extrabold text-emerald-300 tracking-tight">{stats.completed}</p>
+              {stats.completedThisWeek > 0 && (
+                <span className="text-[11px] font-semibold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  +{stats.completedThisWeek} this week
+                </span>
+              )}
+            </div>
             <p className="text-[11px] text-emerald-400/60 mt-1">Delivered to client</p>
           </div>
         </div>

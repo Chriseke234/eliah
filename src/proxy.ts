@@ -7,6 +7,19 @@ export async function proxy(request: NextRequest) {
     if (!supabase) return supabaseResponse
 
     const pathname = request.nextUrl.pathname
+    const host = request.headers.get('host') ?? ''
+    const cleanHost = host.split(':')[0].toLowerCase()
+
+    // Detect custom domain (ignoring localhost & standard apex hosts)
+    const isStandardHost =
+      cleanHost.includes('localhost') ||
+      cleanHost.includes('127.0.0.1') ||
+      cleanHost.endsWith('.vercel.app') ||
+      cleanHost === 'eliahportal.com'
+
+    if (!isStandardHost && cleanHost) {
+      supabaseResponse.headers.set('x-custom-domain', cleanHost)
+    }
 
     // -------------------------------------------------------------------------
     // Auth guard: redirect unauthenticated users hitting /app/* to /login

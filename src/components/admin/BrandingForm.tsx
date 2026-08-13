@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react'
 import { updateOrganizationBranding } from '@/app/actions/settings'
 import { Button } from '@/components/ui/button'
 import { type OrgRow } from '@/lib/database.types'
-import { Check, Loader2, Sparkles, Building2, Image as ImageIcon, Palette, Eye, Plus, LayoutDashboard, Clock } from 'lucide-react'
+import { Check, Loader2, Sparkles, Building2, Image as ImageIcon, Palette, Eye, Plus, LayoutDashboard, Clock, Globe, Upload } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 interface BrandingFormProps {
   org: OrgRow
@@ -15,10 +16,46 @@ export function BrandingForm({ org }: BrandingFormProps) {
   const [logoUrl, setLogoUrl] = useState(org.logo_url ?? '')
   const [primaryColor, setPrimaryColor] = useState(org.primary_color ?? '#8b5cf6')
   const [secondaryColor, setSecondaryColor] = useState(org.secondary_color ?? '#6366f1')
+  const [customDomain, setCustomDomain] = useState(org.custom_domain ?? '')
 
   const [isPending, startTransition] = useTransition()
+  const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    setError(null)
+
+    try {
+      const supabase = createClient()
+      const fileExt = file.name.split('.').pop()
+      const filePath = `branding/logo-${Date.now()}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('request-attachments')
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadError) {
+        throw new Error(uploadError.message)
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('request-attachments')
+        .getPublicUrl(filePath)
+
+      if (publicUrlData?.publicUrl) {
+        setLogoUrl(publicUrlData.publicUrl)
+      }
+    } catch (err: any) {
+      setError(err?.message ?? 'Failed to upload logo image')
+    } finally {
+      setIsUploading(false)
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,6 +73,7 @@ export function BrandingForm({ org }: BrandingFormProps) {
         logoUrl: logoUrl.trim() || undefined,
         primaryColor,
         secondaryColor,
+        customDomain: customDomain.trim() || undefined,
       })
 
       if (res.error) {
@@ -53,7 +91,7 @@ export function BrandingForm({ org }: BrandingFormProps) {
       <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-6 bg-slate-900/90 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-xl">
         <div className="border-b border-slate-800 pb-4">
           <h2 className="text-lg font-semibold text-white">White-Label Customization</h2>
-          <p className="text-xs text-slate-400 mt-1">Configure your brand identity across all client-facing portals.</p>
+          <p className="text-xs text-slate-400 mt-1">Configure your brand identity and custom domain for client-facing portals.</p>
         </div>
 
         {error && (
@@ -86,21 +124,71 @@ export function BrandingForm({ org }: BrandingFormProps) {
           />
         </div>
 
-        {/* Logo URL */}
+        {/* Custom Domain & Subdomain Mapping */}
         <div className="space-y-2">
-          <label htmlFor="logo-url" className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-            <ImageIcon className="w-4 h-4 text-violet-400" />
-            Logo Image URL
+          <label htmlFor="custom-domain" className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+            <Globe className="w-4 h-4 text-violet-400" />
+            Custom Domain / Subdomain Mapping
           </label>
           <input
-            id="logo-url"
-            type="url"
-            value={logoUrl}
-            onChange={(e) => setLogoUrl(e.target.value)}
-            placeholder="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop"
+            id="custom-domain"
+            type="text"
+            value={customDomain}
+            onChange={(e) => setCustomDomain(e.target.value)}
+            placeholder="portal.youragency.com"
             className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/40"
           />
-          <p className="text-xs text-slate-500">Direct PNG, SVG, or WEBP image link for your agency logo.</p>
+          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/60 space-y-1.5 text-xs text-slate-400">
+            <p className="font-medium text-slate-300 flex items-center gap-1.5">
+              <Globe className="w-3.5 h-3.5 text-violet-400" /> DNS CNAME Target:
+            </p>
+            <p className="font-mono text-slate-300 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800/80">
+              CNAME {customDomain.trim() || 'portal.youragency.com'} &rarr; app.eliahportal.com
+            </p>
+          </div>
+        </div>
+
+        {/* Logo Upload & Image URL */}
+        <div className="space-y-3">
+          <label htmlFor="logo-url" className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+            <ImageIcon className="w-4 h-4 text-violet-400" />
+            Agency Logo Image
+          </label>
+
+          {/* Drag and Drop File Upload Control */}
+          <div className="relative border-2 border-dashed border-slate-800 hover:border-violet-500/50 rounded-2xl p-5 bg-slate-950/60 transition-colors text-center cursor-pointer group">
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/svg+xml,image/webp"
+              onChange={handleFileUpload}
+              disabled={isUploading}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+            />
+            <div className="space-y-2 flex flex-col items-center">
+              {isUploading ? (
+                <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
+              ) : (
+                <Upload className="w-6 h-6 text-slate-500 group-hover:text-violet-400 transition-colors" />
+              )}
+              <p className="text-xs font-medium text-slate-300">
+                {isUploading ? 'Uploading logo image...' : 'Click or drop logo image here'}
+              </p>
+              <p className="text-[11px] text-slate-500">Uploads to Supabase Storage (PNG, SVG, WEBP, JPEG)</p>
+            </div>
+          </div>
+
+          {/* URL Fallback Input */}
+          <div className="space-y-1">
+            <span className="text-[11px] text-slate-400 font-medium">Or paste direct image URL fallback:</span>
+            <input
+              id="logo-url"
+              type="url"
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+              placeholder="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop"
+              className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+            />
+          </div>
         </div>
 
         {/* Brand Accent Colors */}
@@ -183,7 +271,6 @@ export function BrandingForm({ org }: BrandingFormProps) {
                 alt="Agency Logo"
                 className="w-8 h-8 rounded-lg object-cover flex-shrink-0 border border-slate-700/50"
                 onError={(e) => {
-                  // Fallback if image breaks
                   (e.target as HTMLElement).style.display = 'none'
                 }}
               />
@@ -199,7 +286,9 @@ export function BrandingForm({ org }: BrandingFormProps) {
             )}
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-white truncate">{name.trim() || 'Agency Name'}</p>
-              <p className="text-[11px] text-slate-500">Client Portal</p>
+              <p className="text-[11px] text-slate-500 truncate">
+                {customDomain.trim() ? customDomain.trim() : 'Client Portal'}
+              </p>
             </div>
           </div>
 

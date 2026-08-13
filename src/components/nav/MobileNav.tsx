@@ -16,6 +16,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { type UserRow, type OrgRow } from '@/lib/database.types'
 import { cn } from '@/lib/utils'
+import { NotificationBell } from './NotificationBell'
 
 interface MobileNavProps {
   profile: UserRow
@@ -74,13 +75,16 @@ export function MobileNav({ profile, org }: MobileNavProps) {
           <span className="text-sm font-semibold text-white">{orgName}</span>
         </div>
 
-        <button
-          onClick={() => setIsOpen(true)}
-          className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-          aria-label="Open menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <button
+            onClick={() => setIsOpen(true)}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        </div>
       </header>
 
       {/* Mobile drawer overlay */}

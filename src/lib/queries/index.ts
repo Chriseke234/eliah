@@ -58,6 +58,30 @@ export async function getOrganizationDetails(orgId: string): Promise<OrgRow | nu
 }
 
 /**
+ * Looks up an organization by its custom_domain or slug.
+ */
+export async function getOrganizationByDomainOrSlug(hostnameOrSlug: string): Promise<OrgRow | null> {
+  const supabase = await createClient()
+  const cleanTerm = hostnameOrSlug.toLowerCase().trim()
+
+  const { data: orgByDomain } = await supabase
+    .from('organizations')
+    .select('*')
+    .eq('custom_domain', cleanTerm)
+    .maybeSingle()
+
+  if (orgByDomain) return orgByDomain as OrgRow
+
+  const { data: orgBySlug } = await supabase
+    .from('organizations')
+    .select('*')
+    .eq('slug', cleanTerm)
+    .maybeSingle()
+
+  return (orgBySlug as OrgRow | null) ?? null
+}
+
+/**
  * Returns all requests belonging to the organization for the Admin workspace.
  */
 export async function getAdminRequests(orgId: string): Promise<RequestWithClient[]> {

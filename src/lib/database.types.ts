@@ -28,6 +28,7 @@ export interface Database {
           primary_color: string | null
           secondary_color: string | null
           favicon_url: string | null
+          custom_domain: string | null
           created_at: string
         }
         Insert: {
@@ -38,6 +39,7 @@ export interface Database {
           primary_color?: string | null
           secondary_color?: string | null
           favicon_url?: string | null
+          custom_domain?: string | null
           created_at?: string
         }
         Update: {
@@ -48,6 +50,7 @@ export interface Database {
           primary_color?: string | null
           secondary_color?: string | null
           favicon_url?: string | null
+          custom_domain?: string | null
           created_at?: string
         }
         Relationships: []
