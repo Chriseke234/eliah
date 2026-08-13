@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { X, Mail, Calendar, User, FileText, Clock, ExternalLink } from 'lucide-react'
+import { useState, useEffect, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { X, Mail, Calendar, User, FileText, Clock, ExternalLink, Trash2, AlertTriangle, Loader2 } from 'lucide-react'
 import { type UserRow, type RequestRow } from '@/lib/database.types'
 import { formatDate } from '@/lib/utils'
 import { statusConfig } from '@/components/ui/status-badge'
 import { createClient } from '@/lib/supabase/client'
+import { deleteClientAccount } from '@/app/actions/auth'
 
 interface ClientDetailDrawerProps {
   client: UserRow | null
@@ -14,11 +16,18 @@ interface ClientDetailDrawerProps {
 }
 
 export function ClientDetailDrawer({ client, open, onClose }: ClientDetailDrawerProps) {
+  const router = useRouter()
   const [requests, setRequests] = useState<RequestRow[]>([])
   const [loading, setLoading] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
     if (!client || !open) return
+
+    setShowConfirm(false)
+    setDeleteError(null)
 
     const loadClientRequests = async () => {
       setLoading(true)
@@ -36,6 +45,24 @@ export function ClientDetailDrawer({ client, open, onClose }: ClientDetailDrawer
     loadClientRequests()
   }, [client, open])
 
+  const handleDeleteClient = () => {
+    if (!client) return
+    setDeleteError(null)
+
+    startTransition(async () => {
+      const result = await deleteClientAccount({ clientId: client.id })
+
+      if (result.error) {
+        setDeleteError(result.error)
+        return
+      }
+
+      setShowConfirm(false)
+      onClose()
+      router.refresh()
+    })
+  }
+
   if (!open || !client) return null
 
   const initials = client.full_name
@@ -52,7 +79,7 @@ export function ClientDetailDrawer({ client, open, onClose }: ClientDetailDrawer
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
+        onClick={isPending ? undefined : onClose}
         aria-hidden="true"
       />
 
@@ -74,6 +101,7 @@ export function ClientDetailDrawer({ client, open, onClose }: ClientDetailDrawer
             <button
               type="button"
               onClick={onClose}
+              disabled={isPending}
               className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               aria-label="Close panel"
             >
@@ -168,8 +196,64 @@ export function ClientDetailDrawer({ client, open, onClose }: ClientDetailDrawer
               )}
             </div>
           </div>
+
+          {/* Drawer Footer: Delete Actions */}
+          <div className="px-6 py-4 border-t border-slate-800/80 bg-slate-950/60 space-y-3">
+            {deleteError && (
+              <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                {deleteError}
+              </div>
+            )}
+
+            {!showConfirm ? (
+              <button
+                type="button"
+                onClick={() => setShowConfirm(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-semibold transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Remove Client from Agency
+              </button>
+            ) : (
+              <div className="p-4 rounded-xl bg-red-950/30 border border-red-500/30 space-y-3">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-white">Confirm Client Removal</p>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      Are you sure you want to remove <strong className="text-slate-200">{client.full_name || client.email}</strong> from your agency portal? This will revoke their access and delete their account.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(false)}
+                    disabled={isPending}
+                    className="flex-1 px-3 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium hover:bg-slate-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteClient}
+                    disabled={isPending}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-medium transition-colors shadow-lg shadow-red-600/20"
+                  >
+                    {isPending ? (
+                      <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Removing...</>
+                    ) : (
+                      <><Trash2 className="w-3.5 h-3.5" /> Confirm Remove</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   )
 }
+

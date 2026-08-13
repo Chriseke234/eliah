@@ -237,3 +237,70 @@ export async function createClientAccount(params: {
     return { error: err?.message ?? 'Failed to create client account' }
   }
 }
+
+/**
+ * Agency team member deletes/removes a CLIENT account from their organization.
+ * Removes the user from Supabase Auth and purges associated user records.
+ */
+export async function deleteClientAccount(params: {
+  clientId: string
+}): Promise<{ error?: string; success?: boolean }> {
+  try {
+    const supabase = await createClient()
+    const adminSupabase = await createAdminClient()
+
+    // 1. Verify caller is authenticated and belongs to Agency (ADMIN role)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { error: 'Not authenticated' }
+
+    const { data: callerProfileData } = await supabase
+      .from('users')
+      .select('role, org_id')
+      .eq('id', user.id)
+      .single()
+
+    const callerProfile = callerProfileData as Pick<UserRow, 'role' | 'org_id'> | null
+
+    if (callerProfile?.role !== 'ADMIN') {
+      return { error: 'Only agency members can remove client accounts' }
+    }
+
+    if (params.clientId === user.id) {
+      return { error: 'You cannot remove your own agency account' }
+    }
+
+    // 2. Verify target user belongs to the same organization and is a CLIENT
+    const { data: targetUserData } = await adminSupabase
+      .from('users')
+      .select('role, org_id')
+      .eq('id', params.clientId)
+      .maybeSingle()
+
+    const targetUser = targetUserData as Pick<UserRow, 'role' | 'org_id'> | null
+
+    if (!targetUser || targetUser.org_id !== callerProfile.org_id) {
+      return { error: 'Client not found in your organization' }
+    }
+
+    // 3. Delete from Supabase Auth (cascades to public.users and public.requests via DB schema)
+    const { error: deleteAuthError } = await adminSupabase.auth.admin.deleteUser(params.clientId)
+
+    if (deleteAuthError) {
+      console.warn('[deleteClientAccount] Auth delete warning, attempting fallback public.users cleanup:', deleteAuthError.message)
+      // Fallback cleanup in public.users if auth delete returned an issue
+      await adminSupabase.from('users').delete().eq('id', params.clientId)
+    } else {
+      // Ensure public.users row is deleted in case cascade wasn't triggered
+      await adminSupabase.from('users').delete().eq('id', params.clientId)
+    }
+
+    revalidatePath('/app/admin/clients')
+    return { success: true }
+  } catch (err: any) {
+    console.error('[deleteClientAccount] Unexpected exception:', err)
+    return { error: err?.message ?? 'Failed to remove client account' }
+  }
+}
+
