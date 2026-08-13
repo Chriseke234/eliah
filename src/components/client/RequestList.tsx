@@ -2,6 +2,7 @@
 
 import { type RequestRow } from '@/lib/database.types'
 import { RequestCard } from './RequestCard'
+import { ClientRequestDrawer } from './ClientRequestDrawer'
 import { useState } from 'react'
 import { Search } from 'lucide-react'
 
@@ -12,6 +13,8 @@ interface RequestListProps {
 export function RequestList({ requests }: RequestListProps) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
+  const [selectedRequest, setSelectedRequest] = useState<RequestRow | null>(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const filtered = requests.filter((r) => {
     const matchesSearch =
@@ -29,6 +32,11 @@ export function RequestList({ requests }: RequestListProps) {
     { value: 'IN_REVIEW', label: 'In Review' },
     { value: 'COMPLETED', label: 'Completed' },
   ]
+
+  const openRequestDrawer = (req: RequestRow) => {
+    setSelectedRequest(req)
+    setDrawerOpen(true)
+  }
 
   return (
     <div className="space-y-4">
@@ -69,10 +77,22 @@ export function RequestList({ requests }: RequestListProps) {
       ) : (
         <div className="space-y-3">
           {filtered.map((request) => (
-            <RequestCard key={request.id} request={request} />
+            <RequestCard
+              key={request.id}
+              request={request}
+              onClick={() => openRequestDrawer(request)}
+            />
           ))}
         </div>
       )}
+
+      {/* Client Request Drawer with Real-Time Chat */}
+      <ClientRequestDrawer
+        request={selectedRequest}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
     </div>
   )
 }
+
