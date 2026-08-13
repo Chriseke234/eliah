@@ -78,7 +78,7 @@ export function Sidebar({ profile, org }: SidebarProps) {
             </p>
           </div>
         </div>
-        <NotificationBell />
+        <NotificationBell align="left" />
       </div>
 
       {/* Navigation */}

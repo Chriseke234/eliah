@@ -76,7 +76,7 @@ export function MobileNav({ profile, org }: MobileNavProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <NotificationBell />
+          <NotificationBell align="right" />
           <button
             onClick={() => setIsOpen(true)}
             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"

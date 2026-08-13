@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useRef, useTransition } from 'react'
 import { Bell, Check, CheckCheck, Info, CheckCircle2, AlertTriangle, AlertCircle, Clock } from 'lucide-react'
 import { getUserNotifications, markNotificationAsRead } from '@/app/actions/notifications'
 import { type NotificationRow, type NotificationType } from '@/lib/database.types'
@@ -26,11 +26,16 @@ function timeAgo(dateString: string): string {
   return `${days}d ago`
 }
 
-export function NotificationBell() {
+interface NotificationBellProps {
+  align?: 'left' | 'right'
+}
+
+export function NotificationBell({ align = 'left' }: NotificationBellProps) {
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<NotificationRow[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isPending, startTransition] = useTransition()
+  const bellRef = useRef<HTMLDivElement>(null)
 
   const loadNotifications = async () => {
     const res = await getUserNotifications()
@@ -41,6 +46,18 @@ export function NotificationBell() {
   useEffect(() => {
     loadNotifications()
   }, [])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!open) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
 
   const handleMarkAllRead = () => {
     startTransition(async () => {
@@ -59,7 +76,7 @@ export function NotificationBell() {
   }
 
   return (
-    <div className="relative">
+    <div ref={bellRef} className="relative">
       <button
         type="button"
         onClick={() => {
@@ -79,7 +96,11 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden z-50">
+        <div
+          className={`absolute mt-2 w-80 sm:w-96 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden z-50 ${
+            align === 'left' ? 'left-0' : 'right-0'
+          }`}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-800 bg-slate-950/60">
             <div className="flex items-center gap-2">
