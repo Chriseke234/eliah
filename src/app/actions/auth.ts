@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
 import { type UserRow } from '@/lib/database.types'
 
 interface SignUpParams {
@@ -171,9 +172,17 @@ export async function createClientAccount(params: {
     const method = params.inviteMethod ?? (params.password ? 'password' : 'email')
 
     if (method === 'email') {
-      // 1. Send invite email & generate magic invite link
+      // Determine origin for auth callback redirect
+      const headerList = await headers()
+      const host = headerList.get('host') ?? 'localhost:3000'
+      const protocol = headerList.get('x-forwarded-proto') ?? (host.includes('localhost') ? 'http' : 'https')
+      const origin = process.env.NEXT_PUBLIC_SITE_URL?.trim() || `${protocol}://${host}`
+      const redirectTo = `${origin}/auth/callback?next=/app/client`
+
+      // 1. Send invite email & generate magic invite link with direct callback to client dashboard
       const { data: inviteData, error: inviteError } =
         await adminSupabase.auth.admin.inviteUserByEmail(params.email, {
+          redirectTo,
           data: {
             org_id: orgId,
             full_name: params.fullName,
@@ -181,11 +190,12 @@ export async function createClientAccount(params: {
           },
         })
 
-      // Generate action link so admin can copy the invite link immediately
+      // Generate action link so agency can copy the invite link immediately
       const { data: linkData } = await adminSupabase.auth.admin.generateLink({
         type: 'invite',
         email: params.email,
         options: {
+          redirectTo,
           data: {
             org_id: orgId,
             full_name: params.fullName,
